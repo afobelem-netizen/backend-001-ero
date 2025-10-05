@@ -10,7 +10,7 @@ app.use(express.json());
 const GITHUB_USER = "afobelem-netizen"; // teu usuário
 const REPO = "backend-inspecao";        // teu repositório
 const FILE_PATH = "dados/inspecoes.txt"; // caminho dentro do repo
-const TOKEN = process.env.GITHUB_TOKEN;  // o token vai ficar guardado no Render
+const TOKEN = process.env.GITHUB_TOKEN;  // token guardado no Render
 
 // ROTA RAIZ
 app.get("/", (req, res) => {
@@ -25,24 +25,30 @@ app.post("/inspecao", async (req, res) => {
 
     const linha = `\n[${dataAtual}] Equipamento: ${dados.equipamento}, Status: ${dados.status}, Obs: ${dados.observacao}`;
 
-    // 1️⃣ Pega o conteúdo atual do arquivo (se existir)
+    // 1️⃣ Tenta pegar o arquivo do GitHub
+    let sha = null;
+    let conteudoAntigo = "";
+
     const response = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${REPO}/contents/${FILE_PATH}`, {
       headers: { Authorization: `token ${TOKEN}` },
     });
-
-    let sha = null;
-    let conteudoAntigo = "";
 
     if (response.ok) {
       const json = await response.json();
       sha = json.sha;
       conteudoAntigo = Buffer.from(json.content, "base64").toString("utf8");
+    } else if (response.status === 404) {
+      // arquivo não existe → será criado
+      sha = null;
+      conteudoAntigo = "";
+    } else {
+      throw new Error("Erro ao acessar o arquivo no GitHub");
     }
 
-    // 2️⃣ Junta o conteúdo antigo com o novo
+    // 2️⃣ Junta o conteúdo antigo com a nova linha
     const novoConteudo = conteudoAntigo + linha;
 
-    // 3️⃣ Envia pro GitHub
+    // 3️⃣ Envia/cria o arquivo no GitHub
     const upload = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${REPO}/contents/${FILE_PATH}`, {
       method: "PUT",
       headers: {
@@ -52,7 +58,7 @@ app.post("/inspecao", async (req, res) => {
       body: JSON.stringify({
         message: `Nova inspeção adicionada: ${dados.equipamento}`,
         content: Buffer.from(novoConteudo).toString("base64"),
-        sha: sha,
+        sha: sha, // null → cria o arquivo
       }),
     });
 
