@@ -9,7 +9,6 @@ app.use(express.json());
 // CONFIGURAÇÕES DO GITHUB
 const GITHUB_USER = "afobelem-netizen"; // teu usuário
 const REPO = "backend-inspecao";        // teu repositório
-const FILE_PATH = "dados/inspecoes.txt"; // caminho dentro do repo
 const TOKEN = process.env.GITHUB_TOKEN;  // token guardado no Render
 
 // ROTA RAIZ
@@ -21,11 +20,19 @@ app.get("/", (req, res) => {
 app.post("/inspecao", async (req, res) => {
   try {
     const dados = req.body;
-    const dataAtual = new Date().toLocaleString("pt-BR");
+    const agora = new Date();
 
-    const linha = `\n[${dataAtual}] Equipamento: ${dados.equipamento}, Status: ${dados.status}, Obs: ${dados.observacao}`;
+    // 📅 gera nome do arquivo por dia (ex: inspecoes-05-10-2025.txt)
+    const dia = String(agora.getDate()).padStart(2, "0");
+    const mes = String(agora.getMonth() + 1).padStart(2, "0");
+    const ano = agora.getFullYear();
+    const nomeArquivo = `inspecoes-${dia}-${mes}-${ano}.txt`;
+    const FILE_PATH = `dados/${nomeArquivo}`;
 
-    // 1️⃣ Tenta pegar o arquivo do GitHub
+    const dataHora = agora.toLocaleString("pt-BR");
+    const linha = `\n[${dataHora}] Equipamento: ${dados.equipamento}, Status: ${dados.status}, Obs: ${dados.observacao}`;
+
+    // 1️⃣ Tenta buscar o arquivo no GitHub
     let sha = null;
     let conteudoAntigo = "";
 
@@ -38,7 +45,7 @@ app.post("/inspecao", async (req, res) => {
       sha = json.sha;
       conteudoAntigo = Buffer.from(json.content, "base64").toString("utf8");
     } else if (response.status === 404) {
-      // arquivo não existe → será criado
+      // arquivo ainda não existe, será criado
       sha = null;
       conteudoAntigo = "";
     } else {
@@ -56,15 +63,15 @@ app.post("/inspecao", async (req, res) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        message: `Nova inspeção adicionada: ${dados.equipamento}`,
+        message: `Inspeção registrada em ${nomeArquivo}`,
         content: Buffer.from(novoConteudo).toString("base64"),
-        sha: sha, // null → cria o arquivo
+        sha: sha, // se null → cria o arquivo
       }),
     });
 
     if (!upload.ok) throw new Error("Erro ao enviar para o GitHub");
 
-    res.json({ message: "Inspeção salva no GitHub com sucesso! ✅" });
+    res.json({ message: `Inspeção salva no GitHub com sucesso em ${nomeArquivo} ✅` });
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ message: "Erro ao salvar inspeção no GitHub", erro: erro.message });
