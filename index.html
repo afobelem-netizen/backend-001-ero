@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Inspeção ERO</title>
+</head>
+<body>
+  <h2>Formulário de Inspeção</h2>
+
+  <form id="formInspecao">
+    <label>Data: <input type="date" name="DATA" required></label><br>
+    <label>Hora: <input type="time" name="HORA" required></label><br>
+    <label>Equipamento: <input type="text" name="EQUIPAMENTO" required></label><br>
+    <label>Descrição: <input type="text" name="DESCRICAO" required></label><br>
+    <button type="submit">Salvar</button>
+  </form>
+
+  <p id="mensagem"></p>
+
+  <script>
+    const form = document.getElementById("formInspecao");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const dados = {
+        DATA: form.DATA.value,
+        HORA: form.HORA.value,
+        EQUIPAMENTO: form.EQUIPAMENTO.value,
+        DESCRICAO: form.DESCRICAO.value
+      };
+
+      const resposta = await fetch("/salvar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados)
+      });
+
+      const resultado = await resposta.json();
+      document.getElementById("mensagem").innerText = resultado.mensagem || resultado.erro;
+      form.reset();
+    });
+  </script>
+</body>
+</html>
