@@ -1,1 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro de Inspeções</title>
+</head>
+<body>
+  <h1>Registro de Inspeções 🧾</h1>
 
+  <form id="formInspecao">
+    <label>Equipamento:</label><br>
+    <input type="text" id="equipamento" required><br><br>
+
+    <label>Status:</label><br>
+    <input type="text" id="status" required><br><br>
+
+    <label>Observação:</label><br>
+    <textarea id="observacao"></textarea><br><br>
+
+    <button type="submit">Enviar</button>
+  </form>
+
+  <p id="mensagem"></p>
+
+  <script>
+    document.getElementById("formInspecao").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const dados = {
+        equipamento: document.getElementById("equipamento").value,
+        status: document.getElementById("status").value,
+        observacao: document.getElementById("observacao").value
+      };
+
+      try {
+        const resposta = await fetch("https://backend-inspecao.onrender.com/inspecao", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(dados)
+        });
+
+        const resultado = await resposta.json();
+        document.getElementById("mensagem").innerText = resultado.message || "Inspeção enviada!";
+      } catch (erro) {
+        document.getElementById("mensagem").innerText = "Erro ao enviar inspeção.";
+      }
+    });
+  </script>
+</body>
+</html>
