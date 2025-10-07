@@ -3,15 +3,87 @@
 <head>
   <meta charset="UTF-8" />
   <title>Inspeção ERO</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background-color: #f7f7f7;
+    }
+
+    h2 {
+      color: #333;
+    }
+
+    form {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      width: 320px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-top: 4px;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+
+    #mensagem {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    #mensagem.sucesso {
+      color: green;
+    }
+
+    #mensagem.erro {
+      color: red;
+    }
+  </style>
 </head>
 <body>
   <h2>Formulário de Inspeção</h2>
 
   <form id="formInspecao">
-    <label>Data: <input type="date" name="DATA" required></label><br>
-    <label>Hora: <input type="time" name="HORA" required></label><br>
-    <label>Equipamento: <input type="text" name="EQUIPAMENTO" required></label><br>
-    <label>Descrição: <input type="text" name="DESCRICAO" required></label><br>
+    <label>Data:
+      <input type="date" name="data" required>
+    </label>
+
+    <label>Hora:
+      <input type="time" name="hora" required>
+    </label>
+
+    <label>Equipamento:
+      <input type="text" name="equipamento" required>
+    </label>
+
+    <label>Descrição:
+      <input type="text" name="descricao" required>
+    </label>
+
     <button type="submit">Salvar</button>
   </form>
 
@@ -19,25 +91,46 @@
 
   <script>
     const form = document.getElementById("formInspecao");
+    const mensagem = document.getElementById("mensagem");
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
+      const botao = form.querySelector("button");
+      botao.disabled = true;
+      botao.textContent = "Salvando...";
+      mensagem.textContent = "";
+      mensagem.className = "";
+
       const dados = {
-        DATA: form.DATA.value,
-        HORA: form.HORA.value,
-        EQUIPAMENTO: form.EQUIPAMENTO.value,
-        DESCRICAO: form.DESCRICAO.value
+        data: form.data.value,
+        hora: form.hora.value,
+        equipamento: form.equipamento.value,
+        descricao: form.descricao.value
       };
 
-      const resposta = await fetch("/salvar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dados)
-      });
+      try {
+        const resposta = await fetch("/api/inspecoes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(dados)
+        });
 
-      const resultado = await resposta.json();
-      document.getElementById("mensagem").innerText = resultado.mensagem || resultado.erro;
-      form.reset();
+        if (!resposta.ok) {
+          throw new Error("Erro ao salvar inspeção. Código: " + resposta.status);
+        }
+
+        const resultado = await resposta.json();
+        mensagem.textContent = resultado.mensagem || "Inspeção salva com sucesso!";
+        mensagem.classList.add("sucesso");
+        form.reset();
+      } catch (erro) {
+        mensagem.textContent = "❌ " + erro.message;
+        mensagem.classList.add("erro");
+      } finally {
+        botao.disabled = false;
+        botao.textContent = "Salvar";
+      }
     });
   </script>
 </body>
