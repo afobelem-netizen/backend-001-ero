@@ -7,44 +7,50 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static("."));
+app.use(express.static(".")); // Servir o index.html
 
 // Configurações do GitHub
-const GITHUB_TOKEN = process.env.MY_GITHUB_TOKEN; // Variável de ambiente no Render
-const GITHUB_USER = "afobelem-netizen";          // teu usuário GitHub
-const REPO = "inspecao-001-ero";                 // teu repositório
-const FILE_PATH = "dados/inspecao.txt";          // caminho do arquivo dentro do repo
+const GITHUB_TOKEN = process.env.MY_GITHUB_TOKEN;
+const GITHUB_USER = "afobelem-netizen";
+const REPO = "inspecao-001-ero";
+const FILE_PATH = "dados/inspecao.txt";
 
-app.post("/salvar", async (req, res) => {
+app.post("/api/inspecoes", async (req, res) => {
   try {
-    const { DATA, HORA, EQUIPAMENTO, DESCRICAO } = req.body;
+    const { data, hora, equipamento, descricao } = req.body;
 
-    if (!DATA || !HORA || !EQUIPAMENTO || !DESCRICAO) {
-      return res.status(400).json({ erro: "Preencha todos os campos!" });
+    if (!data || !hora || !equipamento || !descricao) {
+      return res.status(400).json({ erro: "Preencha todos os campos obrigatórios!" });
     }
 
-    const linha = `${DATA};${HORA};${EQUIPAMENTO};${DESCRICAO}\n`;
+    // Monta a linha de registro
+    const registro = `${data};${hora};${equipamento};${descricao};${new Date().toISOString()}\n`;
 
     const urlArquivo = `https://api.github.com/repos/${GITHUB_USER}/${REPO}/contents/${FILE_PATH}`;
     let shaArquivo = null;
     let conteudoAtual = "";
 
     try {
-      // Verifica se arquivo já existe no GitHub
+      // Tenta obter o arquivo existente
       const respostaGet = await axios.get(urlArquivo, {
         headers: { Authorization: `Bearer ${GITHUB_TOKEN}` },
       });
       shaArquivo = respostaGet.data.sha;
       conteudoAtual = Buffer.from(respostaGet.data.content, "base64").toString("utf8");
-    } catch {
-      // Se não existir ainda, começamos com conteúdo vazio
-      console.log("Arquivo ainda não existe no GitHub. Será criado agora.");
+    } catch (err) {
+      if (err.response?.status === 404) {
+        console.log("📄 Arquivo ainda não existe no GitHub. Será criado agora.");
+      } else {
+        console.error("❌ Erro ao acessar o arquivo:", err.response?.data || err.message);
+        throw err;
+      }
     }
 
-    const novoConteudo = conteudoAtual + linha;
+    // Cria novo conteúdo concatenando os registros
+    const novoConteudo = conteudoAtual + registro;
     const conteudoBase64 = Buffer.from(novoConteudo, "utf8").toString("base64");
 
-    // Faz commit no GitHub
+    // Faz o commit no GitHub
     await axios.put(
       urlArquivo,
       {
@@ -55,11 +61,11 @@ app.post("/salvar", async (req, res) => {
       { headers: { Authorization: `Bearer ${GITHUB_TOKEN}` } }
     );
 
-    res.json({ sucesso: true, mensagem: "Dados enviados e salvos no GitHub com sucesso!" });
+    res.json({ sucesso: true, mensagem: "✅ Inspeção salva com sucesso no GitHub!" });
   } catch (erro) {
-    console.error(erro.response?.data || erro.message || erro);
-    res.status(500).json({ erro: "Erro ao salvar dados no GitHub." });
+    console.error("❌ Erro geral:", erro.response?.data || erro.message || erro);
+    res.status(500).json({ erro: "Erro ao salvar inspeção no GitHub." });
   }
 });
 
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
